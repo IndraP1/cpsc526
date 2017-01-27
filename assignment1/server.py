@@ -12,12 +12,13 @@ class TCPHandler(socketserver.BaseRequestHandler):
     PASSWORD = 'test'
 
     def handle(self):
-        # authetnicate here
-        self.authenticate()
-        self.data = self.request.recv(self.BUFFER_SIZE)
-        print("client {} wrote: ".format(self.client_address[0]))
-        print(format(self.data))
-        self.request.sendall(self.data)
+        while True:
+            # authetnicate here
+            self.authenticate()
+            self.data = self.request.recv(self.BUFFER_SIZE)
+            print("client {} wrote: ".format(self.client_address[0]))
+            print(format(self.data))
+            self.request.sendall(self.data)
 
     def receive(self):
         msg = self.request.recv(self.BUFFER_SIZE)
@@ -35,3 +36,4 @@ if __name__ == "__main__":
     HOST, PORT = "localhost", 9999
     server = socketserver.TCPServer((HOST, PORT), TCPHandler)
     server.serve_forever()
+

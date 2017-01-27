@@ -12,7 +12,7 @@ while True:
     data = input("Enter: ")
     sock.sendall(bytes(data + "\n", "utf-8"))
     received = str(sock.recv(1024), "utf-8")
-    sock.close()
 
     print("Sent:     {}".format(data))
     print("Received: {}".format(received))
+    # sock.close()
