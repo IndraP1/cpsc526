@@ -18,14 +18,13 @@ class TCPHandler(socketserver.BaseRequestHandler):
         while True:
             self.send(PROMPT_COMMAND)
             command = self.receive()
-            output = self.execute_command(command).decode('utf-8')
+            output = self.execute_command(command)
+            print("client {} wrote: ".format(self.client_address[0]) + command)
+            print(output)
             if output == 'invalid':
                 self.send_nl(INVALID_COMMAND + command)
             else:
                 self.send_nl(output)
-
-            print("client {} wrote: ".format(self.client_address[0]) + command)
-            # self.request.sendall(self.data)
 
     def receive(self):
         msg = self.request.recv(1024).decode('utf-8').rstrip('\n')
@@ -52,10 +51,17 @@ class TCPHandler(socketserver.BaseRequestHandler):
         if command == "ls":
             # subprocess.call(["ls", "-l"])
             output = subprocess.check_output(["ls", "-l"])
+        elif command == "pwd":
+            # subprocess.call(["ls", "-l"])
+            output = subprocess.check_output(["pwd"])
+        elif "cd" in command:
+            print(command)
+            subprocess.call("cd /", shell=True, cwd="/")
+            output = subprocess.check_output("cd /", shell=True, cwd="/")
         else:
             output = "invalid"
 
-        return output
+        return output.decode('utf-8')
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 9999
