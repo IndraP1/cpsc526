@@ -15,22 +15,29 @@ class TCPHandler(socketserver.BaseRequestHandler):
         while True:
             # authetnicate here
             self.authenticate()
-            self.data = self.request.recv(self.BUFFER_SIZE)
+            self.data = self.request.recv(1024).decode('utf-8')
             print("client {} wrote: ".format(self.client_address[0]))
             print(format(self.data))
-            self.request.sendall(self.data)
+            # self.request.sendall(self.data)
 
     def receive(self):
-        msg = self.request.recv(self.BUFFER_SIZE)
+        # msg = self.request.recv(1024).decode('utf-8').strip()
+        msg = self.request.recv(1024).decode('utf-8')
         return msg
 
     def send(self, msg):
         self.request.sendall(bytes(msg + '\n', 'utf-8'))
-        # self.request.sendall(msg)
 
     def authenticate(self):
-        self.send(PASSWORD_PROMPT)
-        # passwd_attmpt =
+        while True:
+            self.send(PASSWORD_PROMPT)
+            passwd_attmpt = self.receive().rstrip('\n')
+            print("password attempt " + passwd_attmpt)
+            if passwd_attmpt == self.PASSWORD:
+                self.send(AUTHENTICATE_SUCCESS)
+                break;
+            else:
+                self.send(AUTHENTICATE_FAIL)
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 9999
