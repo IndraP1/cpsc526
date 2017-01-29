@@ -97,6 +97,9 @@ class TCPHandler(socketserver.BaseRequestHandler):
         except OSError as e:
             print("Error occured {}".format(str(e)))
             output = "invalid"
+        except IndexError as e:
+            print("Error occured {}".format(str(e)))
+            output = "invalid"
 
         if isinstance(output, bytes):
             return output.decode('utf-8')
@@ -105,6 +108,6 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
 if __name__ == "__main__":
     print("Starting backdoor server")
-    HOST, PORT = "localhost", 9990
+    HOST, PORT = "localhost", 9999
     server = socketserver.TCPServer((HOST, PORT), TCPHandler)
     server.serve_forever()
