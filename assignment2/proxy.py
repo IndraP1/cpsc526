@@ -16,6 +16,8 @@ parser.add_argument('--auto', action='store', metavar='N', help='')
 args = parser.parse_args()
 
 class MyLogger():
+    mode = 'auto'
+
     def __init__(self):
         if(args.raw):
             self.mode == 'raw'
@@ -25,6 +27,13 @@ class MyLogger():
             self.mode == 'hex'
         else:
             self.mode == 'auto'
+
+    def log(self, msg):
+        split = msg.decode('utf-8').splitlines()
+
+        if(self.mode == 'auto'):
+            print ('<--- ', end='')
+            print ('\n<--- '.join(split))
 
 logger = MyLogger()
 
@@ -51,7 +60,10 @@ class MyTCPConnection(Thread):
         self.stop()
 
     def send_dest(self, msg):
-        print ("---> " + msg.decode('utf-8'))
+        logger.log(msg)
+        # split = msg.decode('utf-8').splitlines()
+        # print ('---> ', end='')
+        # print ('\n---> '.join(split))
         self.proxy_target.send(msg)
 
     def receive(self):
@@ -73,7 +85,9 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 msg = self.receive()
                 if len(msg) == 0:
                     break
-                print ("Received from source: " + msg.decode('utf-8'))
+                # print ("Received from source: " + msg.decode('utf-8'))
+                # split = msg.decode('utf-8').splitlines()
+                # print("<--- split: " + split)
                 connection.send_dest(msg)
         except Exception as e:
             print("Error occured {}".format(str(e)))
@@ -81,7 +95,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         connection.stop()
 
     def send_source(self, msg):
-        print ("<--- " + msg.decode('utf-8'))
+        # split = msg.decode('utf-8').splitlines()
+        # print ('<--- ', end='')
+        # print ('\n<--- '.join(split))
+        logger.log(msg)
         self.request.send(msg)
 
     def receive(self):
@@ -95,10 +112,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 if __name__ == "__main__":
     print("Starting proxy server")
     server = socketserver.ThreadingTCPServer(('localhost', args.src_port), MyTCPHandler)
-    # thread = threading.Thread(target=server.serve_forever)
     thread = Thread(target=server.serve_forever).start()
-    # thread.daemon = True
-    # thread.start()
 
     print("Server taking requests on port " + str(args.src_port))
     print("Server forwarding requests to port " + str(args.src_port) + " of " +
