@@ -4,6 +4,7 @@ import socket
 from threading import Thread
 import time
 import argparse
+import datetime
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src_port', type=int, help='', required=True)
@@ -16,24 +17,50 @@ parser.add_argument('--auto', action='store', metavar='N', help='')
 args = parser.parse_args()
 
 class MyLogger():
-    mode = 'auto'
 
     def __init__(self):
+        self.mode = ''
+
+    def log(self, msg, dir):
+        if (dir == 'in'):
+            arrows = '<---'
+        elif (dir == 'out'):
+            arrows = '--->'
+
         if(args.raw):
-            self.mode == 'raw'
+            split = msg.decode('utf-8').splitlines()
+            if(dir == 'in') :
+                print ('<--- ', end='')
+                print ('\n<--- '.join(split))
+            if(dir == 'out') :
+                print ('---> ', end='')
+                print ('\n---> '.join(split))
+
         elif(args.strip):
-            self.mode == 'strip'
-        elif(args.raw):
-            self.mode == 'hex'
-        else:
-            self.mode == 'auto'
+            newmsg = bytearray(msg)
+            for i in range(len(newmsg)):
+                if ((newmsg[i] < 32 or newmsg[i] > 127) and newmsg[i] != 10):
+                    newmsg[i] = 46
 
-    def log(self, msg):
-        split = msg.decode('utf-8').splitlines()
+            split = newmsg.decode('ascii').splitlines()
+            if(dir == 'in') :
+                print ('<--- ', end='')
+                print ('\n<--- '.join(split))
+            if(dir == 'out') :
+                print ('---> ', end='')
+                print ('\n---> '.join(split))
 
-        if(self.mode == 'auto'):
-            print ('<--- ', end='')
-            print ('\n<--- '.join(split))
+        elif(args.auto):
+            for i in range(0, len(msg), args.auto):
+                line = data[i:i+args.auto]
+                transformed_line = []
+            for j in line:
+                if b >=32 and b < 127:
+                    transformed_line.append(chr(b))
+                else:
+                    transformed_line.append('\\' + format(b, '02x').upper())
+                    transformed_line = ''.join(transformed_line)
+                    print('{:s}{:s}'.format(prefix, transformed_line))
 
 logger = MyLogger()
 
@@ -47,7 +74,6 @@ class MyTCPConnection(Thread):
         self.proxy_target.connect((args.server, args.dst_port))
 
     def run(self):
-        print ("Connection being forwarded")
         try:
             while True:
                 msg = self.receive()
@@ -60,10 +86,7 @@ class MyTCPConnection(Thread):
         self.stop()
 
     def send_dest(self, msg):
-        logger.log(msg)
-        # split = msg.decode('utf-8').splitlines()
-        # print ('---> ', end='')
-        # print ('\n---> '.join(split))
+        logger.log(msg, 'out')
         self.proxy_target.send(msg)
 
     def receive(self):
@@ -77,6 +100,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     BUFFER_SIZE = 4096
 
     def handle(self):
+        now = datetime.datetime.now()
+        print("New connection: " + now.strftime("%Y-%m-%d %H:%M") +
+              " from localhost")
+
         connection = MyTCPConnection(self)
         connection.start()
 
@@ -85,9 +112,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 msg = self.receive()
                 if len(msg) == 0:
                     break
-                # print ("Received from source: " + msg.decode('utf-8'))
-                # split = msg.decode('utf-8').splitlines()
-                # print("<--- split: " + split)
                 connection.send_dest(msg)
         except Exception as e:
             print("Error occured {}".format(str(e)))
@@ -95,10 +119,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         connection.stop()
 
     def send_source(self, msg):
-        # split = msg.decode('utf-8').splitlines()
-        # print ('<--- ', end='')
-        # print ('\n<--- '.join(split))
-        logger.log(msg)
+        logger.log(msg, 'in')
         self.request.send(msg)
 
     def receive(self):
@@ -106,17 +127,15 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         return msg
 
     def stop(self):
-        print("Closing connection")
+        print("Connection closed.")
         self.request.close()
 
 if __name__ == "__main__":
-    print("Starting proxy server")
     server = socketserver.ThreadingTCPServer(('localhost', args.src_port), MyTCPHandler)
     thread = Thread(target=server.serve_forever).start()
 
-    print("Server taking requests on port " + str(args.src_port))
-    print("Server forwarding requests to port " + str(args.src_port) + " of " +
-          args.server)
+    print("Port logger running: srcPort=" + str(args.src_port) +
+            " host=" + args.server + " dst=" + str(args.dst_port))
 
     while True:
         time.sleep(1)
