@@ -3,6 +3,7 @@ import socketserver
 import socket
 from threading import Thread
 import time
+import select
 import argparse
 import datetime
 
@@ -89,7 +90,7 @@ class MyLogger():
                     print('{:s}'.format(newline))
 
         else:
-            split = msg.decode('utf-8').splitlines()
+            split = msg.decode('unicode_escape').splitlines()
             if(dir == 'in') :
                 print ('<--- ', end='')
                 print ('\n<--- '.join(split))
@@ -111,10 +112,13 @@ class MyTCPConnection(Thread):
     def run(self):
         try:
             while True:
-                msg = self.receive()
-                if len(msg) == 0:
-                    break
-                self.proxy_source.send_source(msg)
+                readable, _, _ = select.select([self.proxy_target], [], [], 0)
+
+                if self.proxy_target in readable:
+                    msg = self.receive()
+                    if len(msg) == 0:
+                        break
+                    self.proxy_source.send_source(msg)
         except Exception as e:
             print("Error occured {}".format(str(e)))
 
@@ -144,10 +148,13 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
         try:
             while True:
-                msg = self.receive()
-                if len(msg) == 0:
-                    break
-                connection.send_dest(msg)
+                readable, _, _ = select.select([self.request], [], [], 0)
+
+                if self.request in readable:
+                    msg = self.receive()
+                    if len(msg) == 0:
+                        break
+                    connection.send_dest(msg)
         except Exception as e:
             print("Error occured {}".format(str(e)))
 
