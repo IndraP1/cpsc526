@@ -60,14 +60,14 @@ class MyLogger():
 
                 if (dir == 'out'):
                     print ('---> ', end='')
-                    print('{:08x}'.format(i), end='')
+                    print('{:08x} '.format(i), end='')
                     print('{:24s}'.format(first), end='')
                     print('{:24s}'.format(second), end='')
                     print('|{:s}|'.format(newsg))
 
                 if (dir == 'in'):
                     print ('<--- ', end='')
-                    print('{:08x}'.format(i), end='')
+                    print('{:08x} '.format(i), end='')
                     print('{:24s}'.format(first), end='')
                     print('{:24s}'.format(second), end='')
                     print('|{:s}|'.format(newsg))
