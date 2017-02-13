@@ -15,6 +15,19 @@ parser.add_argument('--hex', help='', action='store_true', required=False)
 parser.add_argument('--auto', action='store', metavar='N', help='')
 args = parser.parse_args()
 
+class MyLogger():
+    def __init__(self):
+        if(args.raw):
+            self.mode == 'raw'
+        elif(args.strip):
+            self.mode == 'strip'
+        elif(args.raw):
+            self.mode == 'hex'
+        else:
+            self.mode == 'auto'
+
+logger = MyLogger()
+
 class MyTCPConnection(Thread):
     BUFFER_SIZE = 4096
 
@@ -29,6 +42,8 @@ class MyTCPConnection(Thread):
         try:
             while True:
                 msg = self.receive()
+                if len(msg) == 0:
+                    break
                 self.proxy_source.send_source(msg)
         except Exception as e:
             print("Error occured {}".format(str(e)))
@@ -36,12 +51,11 @@ class MyTCPConnection(Thread):
         self.stop()
 
     def send_dest(self, msg):
-        print ("Sending to destination: " + str(len(msg)))
+        print ("---> " + msg.decode('utf-8'))
         self.proxy_target.send(msg)
 
     def receive(self):
         msg = self.proxy_target.recv(self.BUFFER_SIZE)
-        print ("Received from dest: " + str(len(msg)))
         return msg
 
     def stop(self):
@@ -57,7 +71,9 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         try:
             while True:
                 msg = self.receive()
-                print ("Received from source: " + str(len(msg)))
+                if len(msg) == 0:
+                    break
+                print ("Received from source: " + msg.decode('utf-8'))
                 connection.send_dest(msg)
         except Exception as e:
             print("Error occured {}".format(str(e)))
@@ -65,7 +81,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         connection.stop()
 
     def send_source(self, msg):
-        print ("Sending to source: " + str(len(msg)))
+        print ("<--- " + msg.decode('utf-8'))
         self.request.send(msg)
 
     def receive(self):
