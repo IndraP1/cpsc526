@@ -1,12 +1,18 @@
 #!/usr/bin/python
 import sys
+import socketserver
+import threading
+import time
 
-class ProxyServer():
-    def __init__(self, log_level, src_port, server, dst_port):
-        self.__log_level = log_level
-        self.__src_port = src_port
-        self.__server = server
-        self.__dst_port = dst_port
+class MyTCPHandler(socketserver.BaseRequestHandler):
+    BUFFER_SIZE = 4096
+
+def handle(self):
+    try:
+        while True:
+            msg = self.request.recv(self.BUFFER_SIZE)
+    except IOError as e:
+        print("Error occured {}".format(str(e)))
 
 if __name__ == "__main__":
     print("Starting proxy server")
@@ -22,4 +28,17 @@ if __name__ == "__main__":
         server = sys.argv[2]
         dst_port = int(sys.argv[3])
 
-        proxy = ProxyServer.ProxyServer(log_level, src_port, server, dst_port)
+    server = socketserver.ThreadingTCPServer((server, src_port), MyTCPHandler)
+    # thread = threading.Thread(target=server.serve_forever)
+    thread = threading.Thread(target=server.serve_forever).start()
+    # thread.daemon = True
+    # thread.start()
+
+    print("Server taking requests on port " + src_port)
+    print("Server forwarding requests to port " + src_port + " of " + server)
+
+    while True:
+        time.sleep(1)
+
+    server.shutdown()
+    server.server_forever()
