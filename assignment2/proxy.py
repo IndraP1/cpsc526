@@ -50,6 +50,41 @@ class MyLogger():
                 print ('---> ', end='')
                 print ('\n---> '.join(split))
 
+        elif(args.hex):
+            for i in range(0, len(msg), 16):
+                line = msg[i:i+16]
+                if (len(line) > 8):
+                    first = line[:8]
+                    second = line[8:]
+                else:
+                    first = line
+                    second = []
+                first = ''.join('%02x'%i for i in first)
+                second = ''.join('%02x'%i for i in second)
+
+                newmsg = bytearray()
+                for j in line:
+                    if ((j < 32 or j > 127) and j != 10):
+                        newmsg.append(46)
+                    else:
+                        newmsg.append(j)
+
+                newsg = newmsg.decode('ascii')
+
+                if (dir == 'out'):
+                    print ('---> ', end='')
+                    print('{:08x}'.format(i), end='')
+                    print('{:24s}'.format(first), end='')
+                    print('{:24s}'.format(second), end='')
+                    print('|{:s}|'.format(newsg))
+
+                if (dir == 'in'):
+                    print ('<--- ', end='')
+                    print('{:08x}'.format(i), end='')
+                    print('{:24s}'.format(first), end='')
+                    print('{:24s}'.format(second), end='')
+                    print('|{:s}|'.format(newsg))
+
         elif(args.auto):
             for i in range(0, len(msg), args.auto):
                 line = data[i:i+args.auto]
