@@ -13,7 +13,7 @@ parser.add_argument('--dst_port', type=int,  help='', required=True)
 parser.add_argument('--raw', help='', action='store_true', required=False)
 parser.add_argument('--strip', help='', action='store_true', required=False)
 parser.add_argument('--hex', help='', action='store_true', required=False)
-parser.add_argument('--auto', action='store', metavar='N', help='')
+parser.add_argument('--auto', action='store', type=int, metavar='N', help='')
 args = parser.parse_args()
 
 class MyLogger():
@@ -22,21 +22,7 @@ class MyLogger():
         self.mode = ''
 
     def log(self, msg, dir):
-        if (dir == 'in'):
-            arrows = '<---'
-        elif (dir == 'out'):
-            arrows = '--->'
-
-        if(args.raw):
-            split = msg.decode('utf-8').splitlines()
-            if(dir == 'in') :
-                print ('<--- ', end='')
-                print ('\n<--- '.join(split))
-            if(dir == 'out') :
-                print ('---> ', end='')
-                print ('\n---> '.join(split))
-
-        elif(args.strip):
+        if(args.strip):
             newmsg = bytearray(msg)
             for i in range(len(newmsg)):
                 if ((newmsg[i] < 32 or newmsg[i] > 127) and newmsg[i] != 10):
@@ -87,15 +73,29 @@ class MyLogger():
 
         elif(args.auto):
             for i in range(0, len(msg), args.auto):
-                line = data[i:i+args.auto]
-                transformed_line = []
-            for j in line:
-                if b >=32 and b < 127:
-                    transformed_line.append(chr(b))
-                else:
-                    transformed_line.append('\\' + format(b, '02x').upper())
-                    transformed_line = ''.join(transformed_line)
-                    print('{:s}{:s}'.format(prefix, transformed_line))
+                line = msg[i:i+args.auto]
+                newline = []
+                for j in line:
+                    if ((j < 32 or j > 127) and j != 10 and j != 9 and j != 13):
+                        newline.append('\\' + format(j, '02x'))
+                    else:
+                        newline.append(chr(j))
+                newline = ''.join(newline)
+                if (dir == 'out'):
+                    print ('---> ', end='')
+                    print('{:s}'.format(newline))
+                elif (dir == 'in'):
+                    print ('<--- ', end='')
+                    print('{:s}'.format(newline))
+
+        else:
+            split = msg.decode('utf-8').splitlines()
+            if(dir == 'in') :
+                print ('<--- ', end='')
+                print ('\n<--- '.join(split))
+            if(dir == 'out') :
+                print ('---> ', end='')
+                print ('\n---> '.join(split))
 
 logger = MyLogger()
 
