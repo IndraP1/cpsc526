@@ -27,18 +27,21 @@ class MyTCPConnection():
 
     def run(self):
         try:
-            # key = args.key
             iv = os.urandom(16)
 
-            # secret is the key padded to cipher length
-            secret = self.create_secret()
-            print(secret)
+            # secret = self.create_secret()
+            self.initialize_connection(iv)
+            msg = self.receive()
+            # print("here!")
+            if(msg == 'OK'):
+                print("its good")
 
-            # self.initalize_connection(iv, secret)
-            self.generate_request(iv)
+            self.generate_request()
             while True:
+                print("here!")
                 msg = self.receive()
                 if len(msg) == 0:
+                    print("stop!")
                     self.stop()
                 elif msg == 'OK':
                     print("ok")
@@ -49,7 +52,7 @@ class MyTCPConnection():
         except Exception as e:
             print("Error occured {}".format(str(e)))
 
-    def generate_request(self, iv):
+    def generate_request(self):
         if (args.command == "write"):
             print("payload")
             # TODO send small amounts of data at a time
@@ -89,20 +92,29 @@ class MyTCPConnection():
     def create_secret(self):
         secret = args.key
         i = 0
-        if(args.cipher == "aes128"):
-            while (utf8len(secret) < 16):
-                if(i == len(args.key)):
-                    i = 0
-                secret = secret + args.key[i]
-                i += 1
-        elif(args.cipher == "aes256"):
-            while (utf8len(secret) < 32):
-                if(i == len(args.key)):
-                    i = 0
-                secret = secret + args.key[i]
-                i += 1
+        if(args.cipher != "none"):
+            if args.key is None:
+                print("ERROR: Must specify key")
+                exit()
+            elif(args.cipher == "aes128"):
+                while (utf8len(secret) < 16):
+                    if(i == len(args.key)):
+                        i = 0
+                    secret = secret + args.key[i]
+                    i += 1
+            elif(args.cipher == "aes256"):
+                while (utf8len(secret) < 32):
+                    if(i == len(args.key)):
+                        i = 0
+                    secret = secret + args.key[i]
+                    i += 1
 
         return secret
+
+    def initialize_connection(self, iv):
+        print("iv: " + str(iv) + " cipher" + args.cipher)
+        initialize = str(iv) + " " + args.cipher
+        self.send(initialize)
 
 
 def utf8len(s):

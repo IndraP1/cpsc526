@@ -17,21 +17,31 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         try:
-            # Probably try to confirm secret here
-            # self.authenticate if possible
             print("new client: " + self.client_address[0] + " crypto: NONE")
+            iv, cipher = self.initialize_connection()
+            # print("iv: " + iv + " cipher" + cipher)
+            self.send(OK)
+
             while True:
                 msg = self.receive()
                 print("DEBUG:" + msg)
                 command = str.split(msg)
                 self.execute_command(command[0], command[1])
-                # command = self.receive()
-                # output = self.execute_command(command)
                 break
             print(DONE)
 
         except IOError as e:
             print("Error occured {}".format(str(e)))
+
+    def initialize_connection(self):
+        initialize = self.receive()
+        initialize_att = initialize.split(" ")
+
+        iv = initialize_att[0]
+        cipher = initialize_att[1]
+
+        print("iv: " + iv + " cipher" + cipher)
+        return iv, cipher
 
     def receive(self):
         msg = self.request.recv(self.BUFFER).decode('utf-8').rstrip('\n')
@@ -58,6 +68,32 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def send(self, msg):
         self.request.sendall(bytes(msg, 'utf-8'))
+
+    def create_secret(self):
+        secret = args.key
+        i = 0
+        if(args.cipher != "none"):
+            if args.key is None:
+                print("ERROR: Must specify key")
+                exit()
+            elif(args.cipher == "aes128"):
+                while (utf8len(secret) < 16):
+                    if(i == len(args.key)):
+                        i = 0
+                    secret = secret + args.key[i]
+                    i += 1
+            elif(args.cipher == "aes256"):
+                while (utf8len(secret) < 32):
+                    if(i == len(args.key)):
+                        i = 0
+                    secret = secret + args.key[i]
+                    i += 1
+
+        return secret
+
+
+def utf8len(s):
+    return len(s.encode('utf-8'))
 
 if __name__ == "__main__":
     print("Listening on port " + str(args.port))
