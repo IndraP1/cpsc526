@@ -35,8 +35,10 @@ class MyTCPConnection():
             print("encrypted: " + str(msg_b))
 
             dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
-            print("decrypted: " + str(dmsg_b))
+            print("decrypted: " + dmsg_b.decode("utf-8"))
 
+            if(dmsg_b.decode("utf-8") == 'OK'):
+                print("hey hey")
             # self.generate_request()
             # while True:
             #     print("here!")
@@ -52,6 +54,26 @@ class MyTCPConnection():
             #         print(msg)
         except Exception as e:
             print("Error occured {}".format(str(e)))
+
+    def encrypt(self, justify, iv_b, secret_b, plaintext):
+        backend = default_backend()
+        cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv_b), backend=backend)
+
+        encryptor = cipher.encryptor()
+        print("len: " + str(utf8len(plaintext)))
+        length = utf8len(plaintext)
+        # TODO fix factor
+        print(length/16)
+        if (length/16 <= 1):
+            plaintext_pad = plaintext.ljust(justify-1)
+        else:
+            factor = math.ceil(length/16)
+            plaintext_pad = plaintext.ljust((factor * justify)-1)
+        
+        encoded = bytes(plaintext_pad + '\n', 'utf-8')
+
+        print("encoded" + str(len(encoded)))
+        return encryptor.update(encoded) + encryptor.finalize()
 
     def decrypt(self, iv_b, secret_b, msg_b):
         backend = default_backend()

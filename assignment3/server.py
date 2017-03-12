@@ -26,8 +26,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
             print("new client: " + self.client_address[0] + " crypto: NONE")
             iv_b, cipher = self.initialize_connection()
             justify, secret_b = self.create_secret(cipher)
-            initial_response = self.encrypt(justify, iv_b, secret_b, "this is a test bruh")
-            # print("encrypted: " + str(initial_response))
+            initial_response = self.encrypt(justify, iv_b, secret_b, "BRUH THIS A TERSDSFSF")
             self.send_b(initial_response)
 
             # while True:
@@ -48,16 +47,17 @@ class TCPHandler(socketserver.BaseRequestHandler):
         encryptor = cipher.encryptor()
         print("len: " + str(utf8len(plaintext)))
         length = utf8len(plaintext)
-        if (length % 16 != 0):
-            factor = math.floor(length % 16)
-            plaintext_pad = plaintext.ljust((factor * justify)-1)
+        # TODO fix factor
+        print(length/16)
+        if (length/16 <= 1):
+            plaintext_pad = plaintext.ljust(justify-1)
         else:
-            plaintext_pad = plaintext
+            factor = math.ceil(length/16)
+            plaintext_pad = plaintext.ljust((factor * justify)-1)
         
         encoded = bytes(plaintext_pad + '\n', 'utf-8')
 
         print("encoded" + str(len(encoded)))
-        # print("encoded: " + str(utf8len(encoded)))
         return encryptor.update(encoded) + encryptor.finalize()
 
     def initialize_connection(self):
