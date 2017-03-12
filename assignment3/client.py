@@ -88,7 +88,6 @@ class MyTCPConnection():
         self.client_socket.sendall(msg)
 
     def send_s(self, msg):
-        print("byte send: " + str(bytes(msg, 'utf-8')))
         self.client_socket.sendall(bytes(msg, 'utf-8'))
 
     def receive_b(self):

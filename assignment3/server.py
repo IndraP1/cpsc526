@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives.ciphers import (
 from cryptography.hazmat.backends import default_backend
 
 OK = 'OK'
+OKnl = 'OK\n'
 DONE = 'done\n'
 
 parser = argparse.ArgumentParser()
@@ -23,9 +24,9 @@ class TCPHandler(socketserver.BaseRequestHandler):
         try:
             print("new client: " + self.client_address[0] + " crypto: NONE")
             iv_b, cipher = self.initialize_connection()
-            secret_b = self.create_secret(cipher)
-            initial_response = self.encrypt(iv_b, secret_b, OK)
-            print("encrypted: " + str(initial_response))
+            justify, secret_b = self.create_secret(cipher)
+            initial_response = self.encrypt(justify, iv_b, secret_b, OKnl)
+            # print("encrypted: " + str(initial_response))
             self.send_b(initial_response)
 
             # while True:
@@ -39,15 +40,23 @@ class TCPHandler(socketserver.BaseRequestHandler):
         except IOError as e:
             print("Error occured {}".format(str(e)))
 
-    def encrypt(self, iv_b, secret_b, plaintext):
+    def encrypt(self, justify, iv_b, secret_b, plaintext):
         backend = default_backend()
         cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv_b), backend=backend)
 
         encryptor = cipher.encryptor()
+        if (utf8len(plaintext) < 16):
+            plaintext_pad = plaintext.ljust(justify)
+        else:
+            plaintext_pad = plaintext
+        
+        encoded = plaintext_pad.encode('utf-8')
 
-        ct = encryptor.update(b"a secret message") + encryptor.finalize()
-
-        return (ct)
+        # print("len p" + str(len(plaintext)))
+        # print("len pp" + str(len(plaintext_pad)))
+        # print("lenutp: " + str(utf8len(plaintext)))
+        # print("lenutpp: " + str(utf8len(plaintext_pad)))
+        return encryptor.update(encoded) + encryptor.finalize()
 
     def initialize_connection(self):
         iv_b = self.receive_b()
@@ -98,12 +107,14 @@ class TCPHandler(socketserver.BaseRequestHandler):
         i = 0
 
         if(cipher == "aes128"):
+            justify = 16
             while (utf8len(secret) < 16):
                 if(i == len(args.key)):
                     i = 0
                 secret = secret + args.key[i]
                 i += 1
         elif(cipher == "aes256"):
+            justify = 32
             while (utf8len(secret) < 32):
                 if(i == len(args.key)):
                     i = 0
@@ -113,7 +124,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
         secret_b = bytes(secret, 'utf-8')
         print("secret_b:" + str(secret_b))
 
-        return secret_b
+        return justify, secret_b
 
 
 def utf8len(s):
