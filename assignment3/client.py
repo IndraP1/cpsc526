@@ -3,10 +3,10 @@ import argparse
 import socket
 import sys
 import os
-# import cryptography
-# from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-# from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-# from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import (
+    Cipher, algorithms, modes
+)
+from cryptography.hazmat.backends import default_backend
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--command', type=str, help='', required=True)
@@ -27,14 +27,15 @@ class MyTCPConnection():
 
     def run(self):
         try:
-            iv = os.urandom(16)
+            iv_b = os.urandom(16)
+            secret_b = self.create_secret()
 
-            secret = self.create_secret()
-            print("secret:" + secret)
-            self.initialize_connection(iv)
-            msg = self.receive_b()
-            # print("here!")
-            print("encrypted:" + str(msg))
+            self.initialize_connection(iv_b)
+            msg_b = self.receive_b()
+            print("encrypted: " + str(msg_b))
+
+            dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
+            print("decrypted: " + str(dmsg_b))
 
             # self.generate_request()
             # while True:
@@ -51,6 +52,13 @@ class MyTCPConnection():
             #         print(msg)
         except Exception as e:
             print("Error occured {}".format(str(e)))
+
+    def decrypt(self, iv_b, secret_b, msg_b):
+        backend = default_backend()
+        cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv_b), backend=backend)
+
+        decryptor = cipher.decryptor()
+        return decryptor.update(msg_b) + decryptor.finalize()
 
     def initialize_connection(self, iv):
         print("iv: " + str(iv) + " cipher" + args.cipher)
@@ -115,7 +123,10 @@ class MyTCPConnection():
                     secret = secret + args.key[i]
                     i += 1
 
-        return secret
+        secret_b = bytes(secret, 'utf-8')
+        print("secret_b:" + str(secret_b))
+
+        return secret_b
 
 
 def utf8len(s):

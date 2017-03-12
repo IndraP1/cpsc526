@@ -40,18 +40,11 @@ class TCPHandler(socketserver.BaseRequestHandler):
             print("Error occured {}".format(str(e)))
 
     def encrypt(self, iv_b, secret_b, plaintext):
-        # secret_b = os.urandom(32)
-        # iv_b = os.urandom(16)
-        # secret_b = str.encode(secret)
-        # iv_b = str.encode(iv)
-        # print("secret:" + str(secret_b))
-        # print("iv_b: " + str(iv_b))
         backend = default_backend()
-
         cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv_b), backend=backend)
+
         encryptor = cipher.encryptor()
 
-        # ciphertext = encryptor.update(b"test") + encryptor.finalize()
         ct = encryptor.update(b"a secret message") + encryptor.finalize()
 
         return (ct)
