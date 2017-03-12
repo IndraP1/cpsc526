@@ -45,27 +45,26 @@ class MyTCPConnection():
                 command_b = self.encrypt(justify, iv_b, secret_b, command_s)
                 self.send_b(command_b)
 
-                # while True:
-                #     print("here!")
-                #     msg = self.receive()
-                #     if len(msg) == 0:
-                #         print("stop!")
-                #         self.stop()
-                #     elif msg == 'OK':
-                #         print("ok")
-                #         self.stop()
-                #     else:
-                #         # decrypt message
-                #         print(msg)
+                while True:
+                    msg_b = self.receive_b()
+                    dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
+                    dmsg_s = dmsg_b.decode("utf-8").strip()
+                    # print("decrypted: " + dmsg_s)
+                    # if len(dmsg_s) == 0:
+                    #     print("stop!")
+                    #     self.stop()
+                    if dmsg_s == 'OK':
+                        print("ok")
+                        self.stop()
+                    else:
+                        print(dmsg_s)
         except Exception as e:
             print("Error occured {}".format(str(e)))
 
     def generate_request(self):
         if (args.command == "write"):
-            print("payload")
             # TODO send small amounts of data at a time
             payload = sys.stdin.read()
-            print(payload)
             command = "WRITE " + args.filename
         elif (args.command == "read"):
             command = "READ " + args.filename
@@ -80,10 +79,8 @@ class MyTCPConnection():
         cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv_b), backend=backend)
 
         encryptor = cipher.encryptor()
-        print("len: " + str(utf8len(plaintext)))
         length = utf8len(plaintext)
         # TODO fix factor
-        print(length/16)
         if (length/16 <= 1):
             plaintext_pad = plaintext.ljust(justify-1)
         else:
@@ -92,7 +89,6 @@ class MyTCPConnection():
         
         encoded = bytes(plaintext_pad + '\n', 'utf-8')
 
-        print("encoded" + str(len(encoded)))
         return encryptor.update(encoded) + encryptor.finalize()
 
     def decrypt(self, iv_b, secret_b, msg_b):

@@ -35,7 +35,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
             print("DEBUG DECRYPTED: " + decryptcommand_b.decode("utf-8").strip())
             command_s = str.split(decryptcommand_b.decode("utf-8").strip())
             print(command_s)
-            # self.execute_command(command_s[0], command_s[1], justify, iv_b, secret_b)
+            self.execute_command(command_s[0], command_s[1], justify, iv_b, secret_b)
             print(DONE)
 
         except IOError as e:
@@ -93,8 +93,8 @@ class TCPHandler(socketserver.BaseRequestHandler):
                 with open(filename) as f:
                     for line in f:
                         print(line)
-                        # line_b = self.encrypt(justify, iv_b, secret_b, OK)
-                        # self.send_b(line_b)
+                        line_b = self.encrypt(justify, iv_b, secret_b, line)
+                        self.send_b(line_b)
                 initial_response = self.encrypt(justify, iv_b, secret_b, OK)
                 self.send_b(initial_response)
                 # self.send(OK)
