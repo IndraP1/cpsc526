@@ -22,10 +22,9 @@ class TCPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         try:
             print("new client: " + self.client_address[0] + " crypto: NONE")
-            iv, cipher = self.initialize_connection()
-            secret = self.create_secret(cipher)
-            print("secret:"+secret)
-            initial_response = self.encrypt(iv, secret, OK)
+            iv_b, cipher = self.initialize_connection()
+            secret_b = self.create_secret(cipher)
+            initial_response = self.encrypt(iv_b, secret_b, OK)
             print("encrypted: " + str(initial_response))
             self.send_b(initial_response)
 
@@ -40,16 +39,16 @@ class TCPHandler(socketserver.BaseRequestHandler):
         except IOError as e:
             print("Error occured {}".format(str(e)))
 
-    def encrypt(self, iv, secret, plaintext):
-        secret_b = os.urandom(32)
-        iv_b = os.urandom(16)
+    def encrypt(self, iv_b, secret_b, plaintext):
+        # secret_b = os.urandom(32)
+        # iv_b = os.urandom(16)
         # secret_b = str.encode(secret)
         # iv_b = str.encode(iv)
         # print("secret:" + str(secret_b))
         # print("iv_b: " + str(iv_b))
         backend = default_backend()
 
-        cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv), backend=backend)
+        cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv_b), backend=backend)
         encryptor = cipher.encryptor()
 
         # ciphertext = encryptor.update(b"test") + encryptor.finalize()
@@ -118,7 +117,10 @@ class TCPHandler(socketserver.BaseRequestHandler):
                 secret = secret + args.key[i]
                 i += 1
 
-        return secret
+        secret_b = bytes(secret, 'utf-8')
+        print("secret_b:" + str(secret_b))
+
+        return secret_b
 
 
 def utf8len(s):
