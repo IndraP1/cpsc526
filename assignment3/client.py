@@ -29,27 +29,36 @@ class MyTCPConnection():
         try:
             iv = os.urandom(16)
 
-            # secret = self.create_secret()
+            secret = self.create_secret()
+            print("secret:" + secret)
             self.initialize_connection(iv)
-            msg = self.receive()
+            msg = self.receive_b()
             # print("here!")
-            print("encrypted:" + msg)
+            print("encrypted:" + str(msg))
 
-            self.generate_request()
-            while True:
-                print("here!")
-                msg = self.receive()
-                if len(msg) == 0:
-                    print("stop!")
-                    self.stop()
-                elif msg == 'OK':
-                    print("ok")
-                    self.stop()
-                else:
-                    # decrypt message
-                    print(msg)
+            # self.generate_request()
+            # while True:
+            #     print("here!")
+            #     msg = self.receive()
+            #     if len(msg) == 0:
+            #         print("stop!")
+            #         self.stop()
+            #     elif msg == 'OK':
+            #         print("ok")
+            #         self.stop()
+            #     else:
+            #         # decrypt message
+            #         print(msg)
         except Exception as e:
             print("Error occured {}".format(str(e)))
+
+    def initialize_connection(self, iv):
+        print("iv: " + str(iv) + " cipher" + args.cipher)
+        # initialize = str(iv) + " " + args.cipher
+        self.send_b(iv)
+        msg = self.receive_s()
+        if msg == 'OK':
+            self.send_s(args.cipher)
 
     def generate_request(self):
         if (args.command == "write"):
@@ -64,23 +73,21 @@ class MyTCPConnection():
             print("ERROR: Invalid command")
             exit()
 
-        self.send(command)
+        self.send_s(command)
 
-    # def encrypt(iv, msg, key):
-    #     encryptor = Cipher(
-    #         algorithms.AES(key),
-    #         modes.GCM(iv),
-    #         backend=default_backend()
-    #     ).encryptor()
+    def send_b(self, msg):
+        # print("bytestest" + str(bytes(msg, 'utf-8')))
+        self.client_socket.sendall(msg)
 
-        # ciphertext = encryptor.update(msg) + encryptor.finalize()
+    def send_s(self, msg):
+        print("byte send: " + str(bytes(msg, 'utf-8')))
+        self.client_socket.sendall(bytes(msg, 'utf-8'))
 
-        # return ciphertext
+    def receive_b(self):
+        msg = self.client_socket.recv(self.BUFFER)
+        return msg
 
-    def send(self, msg):
-        self.client_socket.sendall(bytes(msg + '\n', 'utf-8'))
-
-    def receive(self):
+    def receive_s(self):
         msg = self.client_socket.recv(self.BUFFER).decode('utf-8').rstrip('\n')
         return msg
 
@@ -109,11 +116,6 @@ class MyTCPConnection():
                     i += 1
 
         return secret
-
-    def initialize_connection(self, iv):
-        print("iv: " + str(iv) + " cipher" + args.cipher)
-        initialize = str(iv) + " " + args.cipher
-        self.send(initialize)
 
 
 def utf8len(s):

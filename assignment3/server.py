@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import argparse
+import os
 import socketserver
 from cryptography.hazmat.primitives.ciphers import (
     Cipher, algorithms, modes
@@ -11,7 +12,7 @@ DONE = 'done\n'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--port', type=int, help='', required=True)
-parser.add_argument('--key', type=str, help='', required=False)
+parser.add_argument('--key', type=str, help='', required=True)
 args = parser.parse_args()
 
 
@@ -23,45 +24,55 @@ class TCPHandler(socketserver.BaseRequestHandler):
             print("new client: " + self.client_address[0] + " crypto: NONE")
             iv, cipher = self.initialize_connection()
             secret = self.create_secret(cipher)
+            print("secret:"+secret)
             initial_response = self.encrypt(iv, secret, OK)
-            self.send(initial_response)
+            print("encrypted: " + str(initial_response))
+            self.send_b(initial_response)
 
-            while True:
-                msg = self.receive()
-                print("DEBUG:" + msg)
-                command = str.split(msg)
-                self.execute_command(command[0], command[1])
-                break
+            # while True:
+            #     msg = self.receive()
+            #     print("DEBUG:" + msg)
+            #     command = str.split(msg)
+            #     self.execute_command(command[0], command[1])
+            #     break
             print(DONE)
 
         except IOError as e:
             print("Error occured {}".format(str(e)))
 
-        def encrypt(iv, key, plaintext):
-            # Generate a random 96-bit IV.
-                # Construct an AES-GCM Cipher object with the given key and a
-                # randomly generated IV.
-            encryptor = Cipher(
-                algorithms.AES(key),
-                modes.GCM(iv),
-                backend=default_backend()
-            ).encryptor()
+    def encrypt(self, iv, secret, plaintext):
+        secret_b = os.urandom(32)
+        iv_b = os.urandom(16)
+        # secret_b = str.encode(secret)
+        # iv_b = str.encode(iv)
+        # print("secret:" + str(secret_b))
+        # print("iv_b: " + str(iv_b))
+        backend = default_backend()
 
-            ciphertext = encryptor.update(plaintext) + encryptor.finalize()
+        cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv), backend=backend)
+        encryptor = cipher.encryptor()
 
-            return (ciphertext)
+        # ciphertext = encryptor.update(b"test") + encryptor.finalize()
+        ct = encryptor.update(b"a secret message") + encryptor.finalize()
+
+        return (ct)
 
     def initialize_connection(self):
-        initialize = self.receive()
-        initialize_att = initialize.split(" ")
+        iv_b = self.receive_b()
 
-        iv = initialize_att[0]
-        cipher = initialize_att[1]
+        print("iv: " + str(iv_b))
+        self.send(OK)
 
-        print("iv: " + iv + " cipher" + cipher)
-        return iv, cipher
+        cipher = self.receive_s()
+        print("cipher: " + cipher)
 
-    def receive(self):
+        return iv_b, cipher
+
+    def receive_b(self):
+        msg = self.request.recv(self.BUFFER)
+        return msg
+
+    def receive_s(self):
         msg = self.request.recv(self.BUFFER).decode('utf-8').rstrip('\n')
         return msg
 
@@ -86,6 +97,9 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def send(self, msg):
         self.request.sendall(bytes(msg, 'utf-8'))
+
+    def send_b(self, msg):
+        self.request.sendall(msg)
 
     def create_secret(self, cipher):
         secret = args.key
@@ -113,6 +127,7 @@ def utf8len(s):
 if __name__ == "__main__":
     print("Listening on port " + str(args.port))
     HOST = "localhost"
+
     server = socketserver.TCPServer((HOST, args.port), TCPHandler)
     # generate secret
     server.serve_forever()
