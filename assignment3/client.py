@@ -28,32 +28,52 @@ class MyTCPConnection():
     def run(self):
         try:
             iv_b = os.urandom(16)
-            secret_b = self.create_secret()
+            justify, secret_b = self.create_secret(args.cipher)
 
+            # Initializing connection
             self.initialize_connection(iv_b)
             msg_b = self.receive_b()
             print("encrypted: " + str(msg_b))
 
             dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
-            print("decrypted: " + dmsg_b.decode("utf-8"))
+            print("decrypted: " + dmsg_b.decode("utf-8").strip())
 
-            if(dmsg_b.decode("utf-8") == 'OK'):
-                print("hey hey")
-            # self.generate_request()
-            # while True:
-            #     print("here!")
-            #     msg = self.receive()
-            #     if len(msg) == 0:
-            #         print("stop!")
-            #         self.stop()
-            #     elif msg == 'OK':
-            #         print("ok")
-            #         self.stop()
-            #     else:
-            #         # decrypt message
-            #         print(msg)
+            # Connection established between client and server
+            if(dmsg_b.decode("utf-8").strip() == 'OK'):
+                command_s = self.generate_request()
+                print(command_s)
+                command_b = self.encrypt(justify, iv_b, secret_b, command_s)
+                self.send_b(command_b)
+
+                # while True:
+                #     print("here!")
+                #     msg = self.receive()
+                #     if len(msg) == 0:
+                #         print("stop!")
+                #         self.stop()
+                #     elif msg == 'OK':
+                #         print("ok")
+                #         self.stop()
+                #     else:
+                #         # decrypt message
+                #         print(msg)
         except Exception as e:
             print("Error occured {}".format(str(e)))
+
+    def generate_request(self):
+        if (args.command == "write"):
+            print("payload")
+            # TODO send small amounts of data at a time
+            payload = sys.stdin.read()
+            print(payload)
+            command = "WRITE " + args.filename
+        elif (args.command == "read"):
+            command = "READ " + args.filename
+        else:
+            print("ERROR: Invalid command")
+            exit()
+
+        return command
 
     def encrypt(self, justify, iv_b, secret_b, plaintext):
         backend = default_backend()
@@ -90,21 +110,6 @@ class MyTCPConnection():
         if msg == 'OK':
             self.send_s(args.cipher)
 
-    def generate_request(self):
-        if (args.command == "write"):
-            print("payload")
-            # TODO send small amounts of data at a time
-            payload = sys.stdin.read()
-            print(payload)
-            command = "WRITE " + args.filename
-        elif (args.command == "read"):
-            command = "READ " + args.filename
-        else:
-            print("ERROR: Invalid command")
-            exit()
-
-        self.send_s(command)
-
     def send_b(self, msg):
         self.client_socket.sendall(msg)
 
@@ -123,30 +128,29 @@ class MyTCPConnection():
         self.client_socket.close()
         exit()
 
-    def create_secret(self):
+    def create_secret(self, cipher):
         secret = args.key
         i = 0
-        if(args.cipher != "none"):
-            if args.key is None:
-                print("ERROR: Must specify key")
-                exit()
-            elif(args.cipher == "aes128"):
-                while (utf8len(secret) < 16):
-                    if(i == len(args.key)):
-                        i = 0
-                    secret = secret + args.key[i]
-                    i += 1
-            elif(args.cipher == "aes256"):
-                while (utf8len(secret) < 32):
-                    if(i == len(args.key)):
-                        i = 0
-                    secret = secret + args.key[i]
-                    i += 1
+
+        if(cipher == "aes128"):
+            justify = 16
+            while (utf8len(secret) < 16):
+                if(i == len(args.key)):
+                    i = 0
+                secret = secret + args.key[i]
+                i += 1
+        elif(cipher == "aes256"):
+            justify = 32
+            while (utf8len(secret) < 32):
+                if(i == len(args.key)):
+                    i = 0
+                secret = secret + args.key[i]
+                i += 1
 
         secret_b = bytes(secret, 'utf-8')
         print("secret_b:" + str(secret_b))
 
-        return secret_b
+        return justify, secret_b
 
 
 def utf8len(s):

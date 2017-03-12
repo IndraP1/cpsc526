@@ -26,29 +26,38 @@ class TCPHandler(socketserver.BaseRequestHandler):
             print("new client: " + self.client_address[0] + " crypto: NONE")
             iv_b, cipher = self.initialize_connection()
             justify, secret_b = self.create_secret(cipher)
-            initial_response = self.encrypt(justify, iv_b, secret_b, "BRUH THIS A TERSDSFSF")
+            initial_response = self.encrypt(justify, iv_b, secret_b, OK)
             self.send_b(initial_response)
 
-            # while True:
-            #     msg = self.receive()
-            #     print("DEBUG:" + msg)
-            #     command = str.split(msg)
-            #     self.execute_command(command[0], command[1])
-            #     break
+            while True:
+                command_b = self.receive_b()
+                print("DEBUG ENCRYPTED: " + str(command_b))
+                decryptcommand_b = self.decrypt(iv_b, secret_b, command_b)
+                print("DEBUG DECRYPTED: " + decryptcommand_b.decode("utf-8").strip())
+                command_s = str.split(decryptcommand_b)
+                self.execute_command(command_s[0], command_s[1])
+                break
             print(DONE)
 
         except IOError as e:
             print("Error occured {}".format(str(e)))
+
+    def decrypt(self, iv_b, secret_b, msg_b):
+        backend = default_backend()
+        cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv_b), backend=backend)
+
+        decryptor = cipher.decryptor()
+        return decryptor.update(msg_b) + decryptor.finalize()
 
     def encrypt(self, justify, iv_b, secret_b, plaintext):
         backend = default_backend()
         cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv_b), backend=backend)
 
         encryptor = cipher.encryptor()
-        print("len: " + str(utf8len(plaintext)))
+        # print("len: " + str(utf8len(plaintext)))
         length = utf8len(plaintext)
         # TODO fix factor
-        print(length/16)
+        # print(length/16)
         if (length/16 <= 1):
             plaintext_pad = plaintext.ljust(justify-1)
         else:
@@ -57,17 +66,17 @@ class TCPHandler(socketserver.BaseRequestHandler):
         
         encoded = bytes(plaintext_pad + '\n', 'utf-8')
 
-        print("encoded" + str(len(encoded)))
+        # print("encoded" + str(len(encoded)))
         return encryptor.update(encoded) + encryptor.finalize()
 
     def initialize_connection(self):
         iv_b = self.receive_b()
 
-        print("iv: " + str(iv_b))
+        # print("iv: " + str(iv_b))
         self.send(OK)
 
         cipher = self.receive_s()
-        print("cipher: " + cipher)
+        # print("cipher: " + cipher)
 
         return iv_b, cipher
 
