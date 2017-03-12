@@ -84,7 +84,6 @@ class MyTCPConnection():
         self.send_s(command)
 
     def send_b(self, msg):
-        # print("bytestest" + str(bytes(msg, 'utf-8')))
         self.client_socket.sendall(msg)
 
     def send_s(self, msg):

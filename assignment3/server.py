@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import argparse
+import math
 import os
 import socketserver
 from cryptography.hazmat.primitives.ciphers import (
@@ -8,7 +9,7 @@ from cryptography.hazmat.primitives.ciphers import (
 from cryptography.hazmat.backends import default_backend
 
 OK = 'OK'
-OKnl = 'OK\n'
+# OKnl = 'OK\n'
 DONE = 'done\n'
 
 parser = argparse.ArgumentParser()
@@ -25,7 +26,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
             print("new client: " + self.client_address[0] + " crypto: NONE")
             iv_b, cipher = self.initialize_connection()
             justify, secret_b = self.create_secret(cipher)
-            initial_response = self.encrypt(justify, iv_b, secret_b, OKnl)
+            initial_response = self.encrypt(justify, iv_b, secret_b, "this is a test bruh")
             # print("encrypted: " + str(initial_response))
             self.send_b(initial_response)
 
@@ -45,17 +46,18 @@ class TCPHandler(socketserver.BaseRequestHandler):
         cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv_b), backend=backend)
 
         encryptor = cipher.encryptor()
-        if (utf8len(plaintext) < 16):
-            plaintext_pad = plaintext.ljust(justify)
+        print("len: " + str(utf8len(plaintext)))
+        length = utf8len(plaintext)
+        if (length % 16 != 0):
+            factor = math.floor(length % 16)
+            plaintext_pad = plaintext.ljust((factor * justify)-1)
         else:
             plaintext_pad = plaintext
         
-        encoded = plaintext_pad.encode('utf-8')
+        encoded = bytes(plaintext_pad + '\n', 'utf-8')
 
-        # print("len p" + str(len(plaintext)))
-        # print("len pp" + str(len(plaintext_pad)))
-        # print("lenutp: " + str(utf8len(plaintext)))
-        # print("lenutpp: " + str(utf8len(plaintext_pad)))
+        print("encoded" + str(len(encoded)))
+        # print("encoded: " + str(utf8len(encoded)))
         return encryptor.update(encoded) + encryptor.finalize()
 
     def initialize_connection(self):
