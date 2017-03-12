@@ -29,14 +29,13 @@ class TCPHandler(socketserver.BaseRequestHandler):
             initial_response = self.encrypt(justify, iv_b, secret_b, OK)
             self.send_b(initial_response)
 
-            while True:
-                command_b = self.receive_b()
-                print("DEBUG ENCRYPTED: " + str(command_b))
-                decryptcommand_b = self.decrypt(iv_b, secret_b, command_b)
-                print("DEBUG DECRYPTED: " + decryptcommand_b.decode("utf-8").strip())
-                command_s = str.split(decryptcommand_b)
-                self.execute_command(command_s[0], command_s[1])
-                break
+            command_b = self.receive_b()
+            print("DEBUG ENCRYPTED: " + str(command_b))
+            decryptcommand_b = self.decrypt(iv_b, secret_b, command_b)
+            print("DEBUG DECRYPTED: " + decryptcommand_b.decode("utf-8").strip())
+            command_s = str.split(decryptcommand_b.decode("utf-8").strip())
+            print(command_s)
+            # self.execute_command(command_s[0], command_s[1], justify, iv_b, secret_b)
             print(DONE)
 
         except IOError as e:
@@ -56,7 +55,6 @@ class TCPHandler(socketserver.BaseRequestHandler):
         encryptor = cipher.encryptor()
         # print("len: " + str(utf8len(plaintext)))
         length = utf8len(plaintext)
-        # TODO fix factor
         # print(length/16)
         if (length/16 <= 1):
             plaintext_pad = plaintext.ljust(justify-1)
@@ -88,16 +86,20 @@ class TCPHandler(socketserver.BaseRequestHandler):
         msg = self.request.recv(self.BUFFER).decode('utf-8').rstrip('\n')
         return msg
 
-    def execute_command(self, command, filename):
+    def execute_command(self, command, filename, justify, iv_b, secret_b):
         if (command == "READ"):
             print("reading")
             try:
                 with open(filename) as f:
                     for line in f:
-                        self.send(line)
-                self.send(OK)
+                        print(line)
+                        # line_b = self.encrypt(justify, iv_b, secret_b, OK)
+                        # self.send_b(line_b)
+                initial_response = self.encrypt(justify, iv_b, secret_b, OK)
+                self.send_b(initial_response)
+                # self.send(OK)
             except Exception as e:
-                self.send_nl("ERROR: File " + filename + " does not exist")
+                # self.send_nl("ERROR: File " + filename + " does not exist")
                 print("Error occured {}".format(str(e)))
 
         elif (command == "WRITE"):

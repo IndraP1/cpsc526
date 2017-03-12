@@ -148,7 +148,6 @@ class MyTCPConnection():
                 i += 1
 
         secret_b = bytes(secret, 'utf-8')
-        print("secret_b:" + str(secret_b))
 
         return justify, secret_b
 
