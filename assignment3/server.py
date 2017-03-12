@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import argparse
 import socketserver
+# import cryptography
 
 OK = 'OK'
 DONE = 'done\n'
@@ -38,6 +39,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def execute_command(self, command, filename):
         if (command == "READ"):
+            print("reading")
             try:
                 with open(filename) as f:
                     for line in f:

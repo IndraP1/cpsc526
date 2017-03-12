@@ -2,13 +2,18 @@
 import argparse
 import socket
 import sys
+import os
+# import cryptography
+# from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+# from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+# from cryptography.hazmat.backends import default_backend
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--command', type=str, help='', required=True)
 parser.add_argument('--filename', type=str, help='', required=True)
 parser.add_argument('--hostname', type=str, help='', required=True)
 parser.add_argument('--port', type=int, help='', required=True)
-# parser.add_argument('--cipher', type=str, help='', required=False) #True
+parser.add_argument('--cipher', type=str, help='', required=True)
 parser.add_argument('--key', type=str, help='', required=False)
 args = parser.parse_args()
 
@@ -22,9 +27,15 @@ class MyTCPConnection():
 
     def run(self):
         try:
-            # establish connection
-            # send request
-            self.generate_request()
+            # key = args.key
+            iv = os.urandom(16)
+
+            # secret is the key padded to cipher length
+            secret = self.create_secret()
+            print(secret)
+
+            # self.initalize_connection(iv, secret)
+            self.generate_request(iv)
             while True:
                 msg = self.receive()
                 if len(msg) == 0:
@@ -38,7 +49,7 @@ class MyTCPConnection():
         except Exception as e:
             print("Error occured {}".format(str(e)))
 
-    def generate_request(self):
+    def generate_request(self, iv):
         if (args.command == "write"):
             print("payload")
             # TODO send small amounts of data at a time
@@ -53,6 +64,17 @@ class MyTCPConnection():
 
         self.send(command)
 
+    # def encrypt(iv, msg, key):
+    #     encryptor = Cipher(
+    #         algorithms.AES(key),
+    #         modes.GCM(iv),
+    #         backend=default_backend()
+    #     ).encryptor()
+
+        # ciphertext = encryptor.update(msg) + encryptor.finalize()
+
+        # return ciphertext
+
     def send(self, msg):
         self.client_socket.sendall(bytes(msg + '\n', 'utf-8'))
 
@@ -63,6 +85,28 @@ class MyTCPConnection():
     def stop(self):
         self.client_socket.close()
         exit()
+
+    def create_secret(self):
+        secret = args.key
+        i = 0
+        if(args.cipher == "aes128"):
+            while (utf8len(secret) < 16):
+                if(i == len(args.key)):
+                    i = 0
+                secret = secret + args.key[i]
+                i += 1
+        elif(args.cipher == "aes256"):
+            while (utf8len(secret) < 32):
+                if(i == len(args.key)):
+                    i = 0
+                secret = secret + args.key[i]
+                i += 1
+
+        return secret
+
+
+def utf8len(s):
+    return len(s.encode('utf-8'))
 
 if __name__ == "__main__":
     print(args)
