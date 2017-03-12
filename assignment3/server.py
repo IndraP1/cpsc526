@@ -1,7 +1,10 @@
 #!/usr/bin/python
 import argparse
 import socketserver
-# import cryptography
+from cryptography.hazmat.primitives.ciphers import (
+    Cipher, algorithms, modes
+)
+from cryptography.hazmat.backends import default_backend
 
 OK = 'OK'
 DONE = 'done\n'
@@ -19,8 +22,9 @@ class TCPHandler(socketserver.BaseRequestHandler):
         try:
             print("new client: " + self.client_address[0] + " crypto: NONE")
             iv, cipher = self.initialize_connection()
-            # print("iv: " + iv + " cipher" + cipher)
-            self.send(OK)
+            secret = self.create_secret(cipher)
+            initial_response = self.encrypt(iv, secret, OK)
+            self.send(initial_response)
 
             while True:
                 msg = self.receive()
@@ -32,6 +36,20 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
         except IOError as e:
             print("Error occured {}".format(str(e)))
+
+        def encrypt(iv, key, plaintext):
+            # Generate a random 96-bit IV.
+                # Construct an AES-GCM Cipher object with the given key and a
+                # randomly generated IV.
+            encryptor = Cipher(
+                algorithms.AES(key),
+                modes.GCM(iv),
+                backend=default_backend()
+            ).encryptor()
+
+            ciphertext = encryptor.update(plaintext) + encryptor.finalize()
+
+            return (ciphertext)
 
     def initialize_connection(self):
         initialize = self.receive()
@@ -69,25 +87,22 @@ class TCPHandler(socketserver.BaseRequestHandler):
     def send(self, msg):
         self.request.sendall(bytes(msg, 'utf-8'))
 
-    def create_secret(self):
+    def create_secret(self, cipher):
         secret = args.key
         i = 0
-        if(args.cipher != "none"):
-            if args.key is None:
-                print("ERROR: Must specify key")
-                exit()
-            elif(args.cipher == "aes128"):
-                while (utf8len(secret) < 16):
-                    if(i == len(args.key)):
-                        i = 0
-                    secret = secret + args.key[i]
-                    i += 1
-            elif(args.cipher == "aes256"):
-                while (utf8len(secret) < 32):
-                    if(i == len(args.key)):
-                        i = 0
-                    secret = secret + args.key[i]
-                    i += 1
+
+        if(cipher == "aes128"):
+            while (utf8len(secret) < 16):
+                if(i == len(args.key)):
+                    i = 0
+                secret = secret + args.key[i]
+                i += 1
+        elif(cipher == "aes256"):
+            while (utf8len(secret) < 32):
+                if(i == len(args.key)):
+                    i = 0
+                secret = secret + args.key[i]
+                i += 1
 
         return secret
 

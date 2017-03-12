@@ -33,8 +33,7 @@ class MyTCPConnection():
             self.initialize_connection(iv)
             msg = self.receive()
             # print("here!")
-            if(msg == 'OK'):
-                print("its good")
+            print("encrypted:" + msg)
 
             self.generate_request()
             while True:
