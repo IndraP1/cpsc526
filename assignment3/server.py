@@ -29,19 +29,29 @@ class TCPHandler(socketserver.BaseRequestHandler):
             iv_b, cipher = self.initialize_connection()
             print(gettime() + " new client: " + 
                     self.client_address[0] + " crypto: " + cipher)
-            justify, secret_b = self.create_secret(cipher)
-            initial_response = self.encrypt(justify, iv_b, secret_b, OK)
-            self.send_b(initial_response)
+            if (cipher != "none"):
+                justify, secret_b = self.create_secret(cipher)
+                initial_response = self.encrypt(justify, iv_b, secret_b, OK)
+                self.send_b(initial_response)
 
-            command_b = self.receive_b()
-            decryptcommand_b = self.decrypt(iv_b, secret_b, command_b)
-            command_s = str.split(decryptcommand_b.decode("utf-8").strip())
-            print(gettime() + " command: " + str(decryptcommand_b.decode("utf-8").strip()))
-            self.execute_command(command_s[0], command_s[1], justify, iv_b, secret_b)
-            print(gettime() + " " + DONE)
+                command_b = self.receive_b()
+                decryptcommand_b = self.decrypt(iv_b, secret_b, command_b)
+                command_s = str.split(decryptcommand_b.decode("utf-8").strip())
+                print(gettime() + " command: " + str(decryptcommand_b.decode("utf-8").strip()))
+                self.execute_command(command_s[0], command_s[1], justify, iv_b, secret_b)
+                print(gettime() + " " + DONE)
+            elif (cipher == "none"):
+                print("here now")
+                self.send(OK)
+                msg = self.receive_s()
+                command = str.split(msg)
+                print(gettime() + " command: " + msg)
+                self.execute_command_none(command[0], command[1])
+                print(gettime() + " " + DONE)
 
         except Exception as e:
             print("Error: Could not decrypt")
+            print("Error occured {}".format(str(e)))
 
     def decrypt(self, iv_b, secret_b, msg_b):
         backend = default_backend()
@@ -80,6 +90,22 @@ class TCPHandler(socketserver.BaseRequestHandler):
     def receive_s(self):
         msg = self.request.recv(self.BUFFER).decode('utf-8').rstrip('\n')
         return msg
+
+    def execute_command_none(self, command, filename):
+        if (command == "READ"):
+            try:
+                with open(filename) as f:
+                    for line in f:
+                        self.send_nl(line)
+
+                        msg = self.receive_s()
+                        if (msg != "NEXT"):
+                            break
+                self.send(OK)
+                f.close()
+            except Exception as e:
+                self.send(FILE)
+                print(gettime() + " Error: Could not open file " + filename) 
 
     def execute_command(self, command, filename, justify, iv_b, secret_b):
         if (command == "READ"):
