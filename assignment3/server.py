@@ -9,7 +9,7 @@ from cryptography.hazmat.primitives.ciphers import (
 from cryptography.hazmat.backends import default_backend
 
 OK = 'OK'
-# OKnl = 'OK\n'
+NEXT = 'NEXT'
 DONE = 'done\n'
 
 parser = argparse.ArgumentParser()
@@ -23,8 +23,8 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         try:
-            print("new client: " + self.client_address[0] + " crypto: NONE")
             iv_b, cipher = self.initialize_connection()
+            print("new client: " + self.client_address[0] + " crypto: " + cipher)
             justify, secret_b = self.create_secret(cipher)
             initial_response = self.encrypt(justify, iv_b, secret_b, OK)
             self.send_b(initial_response)
@@ -53,9 +53,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
         cipher = Cipher(algorithms.AES(secret_b), modes.CBC(iv_b), backend=backend)
 
         encryptor = cipher.encryptor()
-        # print("len: " + str(utf8len(plaintext)))
         length = utf8len(plaintext)
-        # print(length/16)
         if (length/16 <= 1):
             plaintext_pad = plaintext.ljust(justify-1)
         else:
@@ -69,12 +67,8 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def initialize_connection(self):
         iv_b = self.receive_b()
-
-        # print("iv: " + str(iv_b))
         self.send(OK)
-
         cipher = self.receive_s()
-        # print("cipher: " + cipher)
 
         return iv_b, cipher
 
@@ -88,23 +82,41 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def execute_command(self, command, filename, justify, iv_b, secret_b):
         if (command == "READ"):
-            print("reading")
             try:
                 with open(filename) as f:
                     for line in f:
                         print(line)
                         line_b = self.encrypt(justify, iv_b, secret_b, line)
+                        print(str(line_b))
                         self.send_b(line_b)
-                initial_response = self.encrypt(justify, iv_b, secret_b, OK)
-                self.send_b(initial_response)
-                # self.send(OK)
+                final_response = self.encrypt(justify, iv_b, secret_b, OK)
+                self.send_b(final_response)
+                f.close()
             except Exception as e:
                 # self.send_nl("ERROR: File " + filename + " does not exist")
                 print("Error occured {}".format(str(e)))
 
-        elif (command == "WRITE"):
-            # TODO
+        if (command == "WRITE"):
+            ok_write = self.encrypt(justify, iv_b, secret_b, OK)
+            self.send_b(ok_write)
             print("WIP Write")
+            f = open(filename, 'w')
+            while True:
+                msg_b = self.receive_b()
+                print("msg_b " + str(msg_b))
+                dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
+                print("decoded_b " + str(dmsg_b))
+                dmsg_s = dmsg_b.decode("utf-8").strip()
+                print("dmsg_s" + dmsg_s)
+                if (dmsg_s == 'OK'):
+                    break
+                f.write(dmsg_s)  
+                next_line = self.encrypt(justify, iv_b, secret_b, NEXT)
+                self.send_b(next_line)
+            f.close()
+
+            # final_response = self.encrypt(justify, iv_b, secret_b, OK)
+            # self.send_b(final_response)
 
     def send_nl(self, msg):
         self.request.sendall(bytes(msg + '\n', 'utf-8'))

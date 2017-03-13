@@ -1,12 +1,16 @@
 #!/usr/bin/python
 import argparse
+import fileinput
 import socket
+import math
 import sys
 import os
 from cryptography.hazmat.primitives.ciphers import (
     Cipher, algorithms, modes
 )
 from cryptography.hazmat.backends import default_backend
+
+OK = 'OK'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--command', type=str, help='', required=True)
@@ -45,27 +49,71 @@ class MyTCPConnection():
                 command_b = self.encrypt(justify, iv_b, secret_b, command_s)
                 self.send_b(command_b)
 
-                while True:
-                    msg_b = self.receive_b()
-                    dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
-                    dmsg_s = dmsg_b.decode("utf-8").strip()
-                    # print("decrypted: " + dmsg_s)
-                    # if len(dmsg_s) == 0:
-                    #     print("stop!")
+                if (args.command == "write"):
+                    self.start_write(justify, iv_b, secret_b)
+                    # msg_b = self.receive_b()
+                    # dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
+                    # dmsg_s = dmsg_b.decode("utf-8").strip()
+                    # if dmsg_s == 'OK':
+                    #     print("ok")
                     #     self.stop()
-                    if dmsg_s == 'OK':
-                        print("ok")
-                        self.stop()
-                    else:
-                        print(dmsg_s)
+
+                elif (args.command == "read"):
+                    while True:
+                        msg_b = self.receive_b()
+                        print(str(msg_b))
+                        dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
+                        dmsg_s = dmsg_b.decode("utf-8").strip()
+                        # print("decrypted: " + dmsg_s)
+                        # if len(dmsg_s) == 0:
+                        #     print("stop!")
+                        #     self.stop()
+                        if dmsg_s == 'OK':
+                            print("ok")
+                            self.stop()
+                        else:
+                            print(dmsg_s)
         except Exception as e:
             print("Error occured {}".format(str(e)))
 
+    def start_write(self, justify, iv_b, secret_b):
+        print("payload")
+        # for line in sys.stdin:
+        #     line_b = self.encrypt(justify, iv_b, secret_b, line)
+        #     print(str(line_b))
+        #     self.send_b(line_b)
+        msg_b = self.receive_b()
+        print(str(msg_b))
+        dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
+        dmsg_s = dmsg_b.decode("utf-8").strip()
+        print("this should be ok: " + dmsg_s)
+        if (dmsg_s == "OK"):
+            try:
+                with open("test.txt") as f:
+                    for line in f:
+                        new_line = line.strip()
+                        print(new_line)
+                        line_b = self.encrypt(justify, iv_b, secret_b, new_line)
+                        print(str(line_b))
+                        self.send_b(line_b)
+
+                        msg_b = self.receive_b()
+                        print("this should be next" + str(msg_b))
+                        dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
+                        dmsg_s = dmsg_b.decode("utf-8").strip()
+                        if (dmsg_s != "NEXT"):
+                            break
+                final_response = self.encrypt(justify, iv_b, secret_b, OK)
+                self.send_b(final_response)
+                f.close()
+            except Exception as e:
+                # self.send_nl("ERROR: File " + filename + " does not exist")
+                print("Error occured {}".format(str(e)))
+
     def generate_request(self):
         if (args.command == "write"):
-            # TODO send small amounts of data at a time
-            payload = sys.stdin.read()
             command = "WRITE " + args.filename
+
         elif (args.command == "read"):
             command = "READ " + args.filename
         else:
