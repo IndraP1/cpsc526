@@ -20,6 +20,7 @@ parser.add_argument('--hostname', type=str, help='', required=True)
 parser.add_argument('--port', type=int, help='', required=True)
 parser.add_argument('--cipher', type=str, help='', required=True)
 parser.add_argument('--key', type=str, help='', required=False)
+parser.add_argument('--out', type=str, help='', required=False)
 args = parser.parse_args()
 
 
@@ -58,21 +59,21 @@ class MyTCPConnection():
                             self.stop()
 
                     elif (args.command == "read"):
-                        print("FILE CONTENTS: ")
-                        print("===================")
+                        f = open(args.out, 'w')
                         while True:
                             msg_b = self.receive_b()
                             dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
                             dmsg_s = dmsg_b.decode("utf-8").strip()
                             
                             if dmsg_s == 'OK':
-                                print("===================")
                                 print("ok")
+                                f.close()
                                 self.stop()
                             if dmsg_s == 'FILE':
                                 print("Error: File " + args.filename + "does not exist")
+                                f.close()
                                 self.stop()
-                            print(dmsg_s)
+                            f.write(dmsg_s+"\n")  
                             next_line = self.encrypt(justify, iv_b, secret_b, NEXT)
                             self.send_b(next_line)
 
@@ -85,25 +86,49 @@ class MyTCPConnection():
                     self.send_s(cmd)
 
                     if (args.command == "read"):
-                        print("FILE CONTENTS: ")
-                        print("===================")
+                        f = open(args.out, 'w')
                         while True:
                             msg = self.receive_s()
                             
                             if msg == 'OK':
-                                print("===================")
                                 print("ok")
+                                f.close()
                                 self.stop()
                             if msg == 'FILE':
                                 print("Error: File " + args.filename + "does not exist")
+                                f.close()
                                 self.stop()
-                            print(msg)
+                            f.write(msg+"\n")  
                             self.send_s(NEXT)
+
+                    elif (args.command == "write"):
+                        self.start_write_none()
+
+                        msg = self.receive_s()
+                        if msg == 'OK':
+                            print("ok")
+                            self.stop()
 
         except Exception as e:
             print("Error: Wrong key")
             print("Error occured {}".format(str(e)))
             self.stop()
+
+    def start_write_none(self):
+        msg = self.receive_s()
+        if (msg == "OK"):
+            try:
+                for line in sys.stdin:
+                    # new_line = line.strip()
+                    self.send_s(line)
+
+                    msg = self.receive_s()
+                    if (msg == "NEXT"):
+                        continue
+                self.send_s(OK)
+            except Exception as e:
+                print("Error occured {}".format(str(e)))
+
 
     def start_write(self, justify, iv_b, secret_b):
         msg_b = self.receive_b()
@@ -152,7 +177,6 @@ class MyTCPConnection():
                 factor = math.ceil(length/16)
                 plaintext_pad = plaintext.ljust((factor * justify)-1)
         else:
-            print("here")
             cipher = Cipher(algorithms.AES(), modes.CBC(), backend=backend)
 
         encryptor = cipher.encryptor()

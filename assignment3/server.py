@@ -41,7 +41,6 @@ class TCPHandler(socketserver.BaseRequestHandler):
                 self.execute_command(command_s[0], command_s[1], justify, iv_b, secret_b)
                 print(gettime() + " " + DONE)
             elif (cipher == "none"):
-                print("here now")
                 self.send(OK)
                 msg = self.receive_s()
                 command = str.split(msg)
@@ -105,7 +104,21 @@ class TCPHandler(socketserver.BaseRequestHandler):
                 f.close()
             except Exception as e:
                 self.send(FILE)
+                print(e)
                 print(gettime() + " Error: Could not open file " + filename) 
+
+        elif (command == "WRITE"):
+            self.send(OK)
+            f = open(filename, 'w')
+            while True:
+                msg = self.receive_s()
+                if (msg == 'OK'):
+                    break
+                f.write(msg + "\n")  
+                self.send(NEXT)
+            f.close()
+
+            self.send(OK)
 
     def execute_command(self, command, filename, justify, iv_b, secret_b):
         if (command == "READ"):
@@ -126,6 +139,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
             except Exception as e:
                 no_file = self.encrypt(justify, iv_b, secret_b, FILE)
                 self.send_b(no_file)
+                print(e)
                 print(gettime() + " Error: Could not open file " + filename) 
 
         if (command == "WRITE"):
