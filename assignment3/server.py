@@ -2,7 +2,9 @@
 import argparse
 import math
 import os
+import time
 import socketserver
+import random
 from cryptography.hazmat.primitives.ciphers import (
     Cipher, algorithms, modes
 )
@@ -10,11 +12,12 @@ from cryptography.hazmat.backends import default_backend
 
 OK = 'OK'
 NEXT = 'NEXT'
+FILE = 'FILE'
 DONE = 'done\n'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--port', type=int, help='', required=True)
-parser.add_argument('--key', type=str, help='', required=True)
+parser.add_argument('--key', type=str, help='', required=False)
 args = parser.parse_args()
 
 
@@ -24,22 +27,21 @@ class TCPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         try:
             iv_b, cipher = self.initialize_connection()
-            print("new client: " + self.client_address[0] + " crypto: " + cipher)
+            print(gettime() + " new client: " + 
+                    self.client_address[0] + " crypto: " + cipher)
             justify, secret_b = self.create_secret(cipher)
             initial_response = self.encrypt(justify, iv_b, secret_b, OK)
             self.send_b(initial_response)
 
             command_b = self.receive_b()
-            print("DEBUG ENCRYPTED: " + str(command_b))
             decryptcommand_b = self.decrypt(iv_b, secret_b, command_b)
-            print("DEBUG DECRYPTED: " + decryptcommand_b.decode("utf-8").strip())
             command_s = str.split(decryptcommand_b.decode("utf-8").strip())
-            print(command_s)
+            print(gettime() + " command: " + str(decryptcommand_b.decode("utf-8").strip()))
             self.execute_command(command_s[0], command_s[1], justify, iv_b, secret_b)
-            print(DONE)
+            print(gettime() + " " + DONE)
 
-        except IOError as e:
-            print("Error occured {}".format(str(e)))
+        except Exception as e:
+            print("Error: Could not decrypt")
 
     def decrypt(self, iv_b, secret_b, msg_b):
         backend = default_backend()
@@ -62,7 +64,6 @@ class TCPHandler(socketserver.BaseRequestHandler):
         
         encoded = bytes(plaintext_pad + '\n', 'utf-8')
 
-        # print("encoded" + str(len(encoded)))
         return encryptor.update(encoded) + encryptor.finalize()
 
     def initialize_connection(self):
@@ -85,38 +86,39 @@ class TCPHandler(socketserver.BaseRequestHandler):
             try:
                 with open(filename) as f:
                     for line in f:
-                        print(line)
                         line_b = self.encrypt(justify, iv_b, secret_b, line)
-                        print(str(line_b))
                         self.send_b(line_b)
+
+                        msg_b = self.receive_b()
+                        dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
+                        dmsg_s = dmsg_b.decode("utf-8").strip()
+                        if (dmsg_s != "NEXT"):
+                            break
                 final_response = self.encrypt(justify, iv_b, secret_b, OK)
                 self.send_b(final_response)
                 f.close()
             except Exception as e:
-                # self.send_nl("ERROR: File " + filename + " does not exist")
-                print("Error occured {}".format(str(e)))
+                no_file = self.encrypt(justify, iv_b, secret_b, FILE)
+                self.send_b(no_file)
+                print(gettime() + " Error: Could not open file " + filename) 
 
         if (command == "WRITE"):
             ok_write = self.encrypt(justify, iv_b, secret_b, OK)
             self.send_b(ok_write)
-            print("WIP Write")
             f = open(filename, 'w')
             while True:
                 msg_b = self.receive_b()
-                print("msg_b " + str(msg_b))
                 dmsg_b = self.decrypt(iv_b, secret_b, msg_b)
-                print("decoded_b " + str(dmsg_b))
                 dmsg_s = dmsg_b.decode("utf-8").strip()
-                print("dmsg_s" + dmsg_s)
                 if (dmsg_s == 'OK'):
                     break
-                f.write(dmsg_s)  
+                f.write(dmsg_s+"\n")  
                 next_line = self.encrypt(justify, iv_b, secret_b, NEXT)
                 self.send_b(next_line)
             f.close()
 
-            # final_response = self.encrypt(justify, iv_b, secret_b, OK)
-            # self.send_b(final_response)
+            final_response = self.encrypt(justify, iv_b, secret_b, OK)
+            self.send_b(final_response)
 
     def send_nl(self, msg):
         self.request.sendall(bytes(msg + '\n', 'utf-8'))
@@ -145,9 +147,10 @@ class TCPHandler(socketserver.BaseRequestHandler):
                     i = 0
                 secret = secret + args.key[i]
                 i += 1
+        else:
+            secret = ""
 
         secret_b = bytes(secret, 'utf-8')
-        print("secret_b:" + str(secret_b))
 
         return justify, secret_b
 
@@ -155,8 +158,14 @@ class TCPHandler(socketserver.BaseRequestHandler):
 def utf8len(s):
     return len(s.encode('utf-8'))
 
+def gettime():
+    return time.strftime("%H:%M:%S") 
+
 if __name__ == "__main__":
     print("Listening on port " + str(args.port))
+    if(args.key == None):
+        args.key = ''.join(random.choice('0123456789ABCDEF') for i in range(32))
+    print("Using secret key " + str(args.key))
     HOST = "localhost"
 
     server = socketserver.TCPServer((HOST, args.port), TCPHandler)
